@@ -1,0 +1,30 @@
+<html>
+<head>
+  <title>名簿</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <meta http-equiv="Content-Script-Type" content="text/javascript">
+  <link rel="stylesheet" href="style.css" type="text/css">
+</head>
+<body>
+  <h1>名簿</h1>
+  <table>
+    <tr>
+      <th width="50px">ID</th>
+      <th width="100px">Name</th>
+      <th width="200px">Memo</th>
+    </tr>
+    [% FOREACH p = people -%]
+    <tr>
+      <th>[% p.id %]</th>
+      <td>[% p.name %]</td>
+      <td>[% p.memo %]</td>
+    </tr>
+    [% END -%]
+  </table>
+  <form action="memberview.cgi">
+    <input type="hidden" name="rm" value="insert_input">
+    <input type="submit" value="追加">
+  </form>
+</body>
+</html>
