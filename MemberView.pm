@@ -35,9 +35,9 @@ sub setup {
 }
 
 sub error {
-	my($self, $err) = @_;
+  my($self, $err) = @_;
 
-	return $err;
+  return $err;
 }
 
 sub teardown {
