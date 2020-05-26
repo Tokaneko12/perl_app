@@ -9,6 +9,7 @@ use Template::Stash::ForceUTF8;
 use Template;
 my ($user, $passwd, $db, $template, $output);
 
+# セットアップ
 sub setup {
   my $self = shift;
   $user = 'test';
@@ -34,16 +35,19 @@ sub setup {
   );
 }
 
+# エラー処理
 sub error {
   my($self, $err) = @_;
 
   return $err;
 }
 
+# アプリケーション実行後のクリーンアップ
 sub teardown {
   $db->disconnect;
 }
 
+# 名簿一覧画面表示
 sub do_view {
   my $self = shift;
   my $sth = $db->prepare("SELECT * FROM list ORDER BY id ASC");  # ソートなしだと順不動になるのでORDER BY は必須
@@ -68,6 +72,7 @@ sub do_view {
   return $output;
 }
 
+# 新規登録入力画面用意
 sub do_input {
   my $self = shift;
   $template->process(
@@ -79,6 +84,7 @@ sub do_input {
   return $output;
 }
 
+# 新規登録実行 → 完了画面
 sub do_regist {
   my $self = shift;
   my $formName = $self->query->param('userName');
@@ -95,6 +101,7 @@ sub do_regist {
   return $output;
 }
 
+# 更新用入力画面用意
 sub do_upinput {
   my $self = shift;
   my $updId = $self->query->param('id');
@@ -111,6 +118,7 @@ sub do_upinput {
   return $output;
 }
 
+# 更新実行 → 完了画面
 sub do_update {
   my $self = shift;
   my $updId = $self->query->param('id');
@@ -127,6 +135,7 @@ sub do_update {
   return $output;
 }
 
+# 削除実行
 sub do_delete {
   my $self = shift;
   my $delId = $self->query->param('id');
