@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 BEGIN {
-push(@INC, '/home/tkaneko/contents');
+push(@INC, '/home/tkaneko/share/contents');
 }
 
 use strict;

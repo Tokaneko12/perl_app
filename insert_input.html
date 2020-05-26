@@ -9,11 +9,20 @@
 <body>
 <h1>新規登録</h1>
 <form action="memberview.cgi" method="post">
+  [% IF item %]
+  <input type="hidden" name="id" value="[% item.id %]"><br/>
+  <span>名前:</span>
+  <input type="text" name="userName" value="[% item.name %]"><br/>
+  <span>メモ:</span>
+  <textarea name="memo" rows="8" cols="32">[% item.memo %]</textarea><br/>
+  <input type="hidden" name="rm" value="update_complete">
+  [% ELSE %]
   <span>名前:</span>
   <input type="text" name="userName"><br/>
   <span>メモ:</span>
   <textarea name="memo" rows="8" cols="32"></textarea><br/>
-  <input type="hidden" name="rm" value="finish">
+  <input type="hidden" name="rm" value="input_complete">
+  [% END %]
   <input type="submit" value="登録">
   <input type="reset" value="リセット">
 </form>

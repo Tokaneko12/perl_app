@@ -19,11 +19,25 @@
       <th>[% p.id %]</th>
       <td>[% p.name %]</td>
       <td>[% p.memo %]</td>
+      <td>
+        <form class="no-margin" action="memberview.cgi" method="post">
+          <input type="hidden" name="rm" value="update_item">
+          <input type="hidden" name="id" value="[% p.id %]">
+          <input type="submit" value="編集">
+        </form>
+      </td>
+      <td>
+        <form class="no-margin" action="memberview.cgi" method="post" onSubmit="return confirm('削除してもよろしいですか？') ">
+          <input type="hidden" name="rm" value="delete_item">
+          <input type="hidden" name="id" value="[% p.id %]">
+          <input type="submit" value="削除">
+        </form>
+      </td>
     </tr>
     [% END -%]
   </table>
   <form action="memberview.cgi">
-    <input type="hidden" name="rm" value="insert_input">
+    <input type="hidden" name="rm" value="form_input">
     <input type="submit" value="追加">
   </form>
 </body>

@@ -18,3 +18,7 @@ textarea {
 span {
   display: block;
 }
+
+.no-margin {
+  margin: 0;
+}
