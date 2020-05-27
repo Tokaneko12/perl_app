@@ -89,7 +89,7 @@ sub do_regist {
   my $self = shift;
   my $formName = $self->query->param('userName');
   my $formMemo = $self->query->param('memo');
-  my $sth = $db->prepare("INSERT INTO list (name, memo) VALUES('$formName', '$formMemo')");
+  my $sth = $db->prepare("INSERT INTO list (name, memo) VALUES('$formName', '$formMemo')"); #id項目はMySQLのAUTO_INCREMENTを使用
   $sth->execute() || die($DBI::errstr);
 
   $template->process(
