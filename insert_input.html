@@ -5,29 +5,41 @@
   <meta http-equiv="Content-Style-Type" content="text/css">
   <meta http-equiv="Content-Script-Type" content="text/javascript">
   <link rel="stylesheet" href="style.css" type="text/css">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" crossorigin="anonymous"></script>
 </head>
 <body>
-<h1>新規登録</h1>
-<form action="memberview.cgi" method="post">
-  [% IF item %]
-  <input type="hidden" name="id" value="[% item.id %]"><br/>
-  <span>名前:</span>
-  <input type="text" name="userName" value="[% item.name %]"><br/>
-  <span>メモ:</span>
-  <textarea name="memo" rows="8" cols="32">[% item.memo %]</textarea><br/>
-  <input type="hidden" name="rm" value="update_complete">
-  [% ELSE %]
-  <span>名前:</span>
-  <input type="text" name="userName"><br/>
-  <span>メモ:</span>
-  <textarea name="memo" rows="8" cols="32"></textarea><br/>
-  <input type="hidden" name="rm" value="input_complete">
-  [% END %]
-  <input type="submit" value="登録">
-  <input type="reset" value="リセット">
-</form>
-<p>
-  <a href="memberview.cgi">戻る</a>
-</p>
+<div class="wrapper">
+  <h1>
+    [% IF item %]
+    編集
+    [% ELSE %]
+    新規登録
+    [% END %]
+  </h1>
+  <form action="memberview.cgi" method="post">
+    <div class="form-group">
+      [% IF item %]
+      <input type="hidden" name="id" value="[% item.id %]">
+      <span>名前:</span>
+      <input type="text" class="form-control" name="userName" value="[% item.name %]"><br/>
+      <span>メモ:</span>
+      <textarea name="memo" class="form-control" rows="8" cols="32">[% item.memo %]</textarea><br/>
+      <input type="hidden" name="rm" value="update_complete">
+      [% ELSE %]
+      <span>名前:</span>
+      <input type="text" class="form-control" name="userName"><br/>
+      <span>メモ:</span>
+      <textarea class="form-control" name="memo" rows="8" cols="32"></textarea><br/>
+      <input type="hidden" name="rm" value="input_complete">
+      [% END %]
+      <input type="submit" class="btn btn-primary" value="登録">
+      <input type="reset" class="btn btn-secondary" value="リセット">
+    </div>
+  </form>
+  <p>
+    <a href="memberview.cgi">戻る</a>
+  </p>
+</div>
 </body>
 </html>

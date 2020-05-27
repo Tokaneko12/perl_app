@@ -1,3 +1,11 @@
+.wrapper {
+  margin: 10px 20px;
+}
+
+h1 {
+  margin-bottom: 0;
+}
+
 table {
   border: 1px solid #ccc;
   margin-bottom: 10px;
@@ -9,6 +17,8 @@ tr {
 
 th, td {
   border: 1px solid #ccc;
+  vertical-align: middle;
+  padding: 5px 10px;
 }
 
 textarea {
