@@ -52,7 +52,11 @@ a {
 
 
 form input:focus:invalid {
-  border : tomato 2px solid;
+  border: tomato 2px solid;
+}
+
+form textarea:focus:invalid {
+  border: tomato 2px solid;
 }
 
 .error .invalid  {
@@ -60,11 +64,15 @@ form input:focus:invalid {
 }
 
 form input:invalid + .error .invalid {
-  display : block;
+  display: block;
 }
 
 form input:focus:invalid + .error .invalid {
-  display : none;
+  display: none;
+}
+
+form textarea:focus:invalid + .error .invalid {
+  display: block;
 }
 
 .name_txt span {
