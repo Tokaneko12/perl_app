@@ -1,9 +1,19 @@
+/*========================================
+
+ 共通設定
+
+========================================*/
+
 .wrapper {
   margin: 10px 20px;
 }
 
 h1 {
   margin-bottom: 0;
+}
+
+p {
+  margin: 0;
 }
 
 table {
@@ -21,14 +31,61 @@ th, td {
   padding: 5px 10px;
 }
 
-textarea {
-  margin-bottom: 10px;
-}
-
-span {
-  display: block;
+a {
+  text-decoration: underline;
 }
 
 .no-margin {
   margin: 0;
+}
+
+.no-padding {
+  padding: 0;
+}
+
+
+/*========================================
+
+ フォーム設定
+
+========================================*/
+
+
+form input:focus:invalid {
+  border : tomato 2px solid;
+}
+
+.error .invalid  {
+  display: none;
+}
+
+form input:invalid + .error .invalid {
+  display : block;
+}
+
+form input:focus:invalid + .error .invalid {
+  display : none;
+}
+
+.name_txt span {
+  font-size: 1.2rem;
+  color: red;
+}
+
+.name_txt,
+.memo_txt {
+  margin-top: 10px;
+}
+
+textarea {
+  margin-bottom: 10px;
+}
+
+.form-btns {
+  margin-top: 50px;
+}
+
+.login-btn,
+.regist_input-btn {
+  margin-top: 20px;
 }

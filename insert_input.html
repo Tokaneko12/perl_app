@@ -4,9 +4,10 @@
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <meta http-equiv="Content-Style-Type" content="text/css">
   <meta http-equiv="Content-Script-Type" content="text/javascript">
-  <link rel="stylesheet" href="style.css" type="text/css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="style.css" type="text/css">
 </head>
 <body>
 <div class="wrapper">
@@ -17,24 +18,40 @@
     新規登録
     [% END %]
   </h1>
-  <form action="memberview.cgi" method="post">
+  <form action="memberview.cgi" method="post" enctype="application/x-www-form-urlencoded">
     <div class="form-group">
       [% IF item %]
-      <input type="hidden" name="id" value="[% item.id %]">
-      <span>名前:</span>
-      <input type="text" class="form-control" name="userName" value="[% item.name %]"><br/>
-      <span>メモ:</span>
-      <textarea name="memo" class="form-control" rows="8" cols="32">[% item.memo %]</textarea><br/>
+      <input type="hidden" name="id" value="[% item.id %]" required>
+      <p class="name_txt">名前<span>*</span>:</p>
+      <input type="text" class="form-control" name="userName" value="[% item.name %]" maxlength="50" required>
+      <p class="error">
+        <span class="invalid">※この項目は入力必須です。</span>
+      </p>
+      <p class="memo_txt">メモ:</p>
+      <textarea name="memo" class="form-control" rows="8" cols="32">[% item.memo %]</textarea>
+      <p class="error">
+        <span class="invalid">※メモは200文字以内で入力してください</span>
+      </p>
       <input type="hidden" name="rm" value="update_complete">
+      <!-- <input type="file" name="fileName" size="60"> -->
       [% ELSE %]
-      <span>名前:</span>
-      <input type="text" class="form-control" name="userName"><br/>
-      <span>メモ:</span>
-      <textarea class="form-control" name="memo" rows="8" cols="32"></textarea><br/>
+      <p class="name_txt">名前<span>*</span>:</p>
+      <input type="text" class="form-control" name="userName" maxlength="50" required>
+      <p class="error">
+        <span class="invalid">※この項目は入力必須です。</span>
+      </p>
+      <p class="memo_txt">メモ:</p>
+      <textarea class="form-control" name="memo" rows="8" cols="32"></textarea>
+      <p class="error">
+        <span class="invalid">※メモは200文字以内で入力してください</span>
+      </p>
       <input type="hidden" name="rm" value="input_complete">
+      <!-- <input type="file" name="fileName" size="60"> -->
       [% END %]
-      <input type="submit" class="btn btn-primary" value="登録">
-      <input type="reset" class="btn btn-secondary" value="リセット">
+      <div class="form-btns">
+        <input type="submit" class="btn btn-primary" value="登録">
+        <input type="reset" class="btn btn-secondary" value="リセット">
+      </div>
     </div>
   </form>
   <p>

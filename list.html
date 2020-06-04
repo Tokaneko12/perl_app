@@ -4,9 +4,10 @@
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <meta http-equiv="Content-Style-Type" content="text/css">
   <meta http-equiv="Content-Script-Type" content="text/javascript">
-  <link rel="stylesheet" href="style.css" type="text/css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="style.css" type="text/css">
 </head>
 <body>
   <div class="wrapper">
@@ -23,14 +24,14 @@
         <td>[% p.name %]</td>
         <td>[% p.memo %]</td>
         <td>
-          <form class="no-margin" action="memberview.cgi" method="post">
+          <form class="no-margin" action="memberview.cgi" method="post" enctype="application/x-www-form-urlencoded">
             <input type="hidden" name="rm" value="update_item">
             <input type="hidden" name="id" value="[% p.id %]">
             <button type="submit" class="btn btn-secondary">編集</button>
           </form>
         </td>
         <td>
-          <form class="no-margin" action="memberview.cgi" method="post" onSubmit="return confirm('削除してもよろしいですか？') ">
+          <form class="no-margin" action="memberview.cgi" method="post" onSubmit="return confirm('削除してもよろしいですか？') " enctype="application/x-www-form-urlencoded">
             <input type="hidden" name="rm" value="delete_item">
             <input type="hidden" name="id" value="[% p.id %]">
             <button type="submit" class="btn btn-danger">削除</button>
@@ -39,13 +40,14 @@
         <!-- <td>
           <form class="no-margin" action="memberview.cgi" method="post">
             <input type="file" name="fileName" size="60">
-            <input type="submit" name="submit" value="送信">
+            <input type="hidden" name="rm" value="add_file">
+            <button type="submit" class="btn-outline-secondary">追加</button>
           </form>
         </td> -->
       </tr>
       [% END -%]
     </table>
-    <form action="memberview.cgi">
+    <form action="memberview.cgi" enctype="application/x-www-form-urlencoded">
       <input type="hidden" name="rm" value="form_input">
       <button type="submit" class="btn btn-primary">追加</button>
     </form>
