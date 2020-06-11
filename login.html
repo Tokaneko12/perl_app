@@ -16,13 +16,19 @@
       <div class="form-group">
         <div class="">
           <span>メール：</span>
-          <input type="email" class="form-control" name="email" required>
+          <input type="email" class="form-control" name="email" value="[% formEmail %]" required>
+          [% IF errMail %]
+            <p class="error">[% errMail %]</p>
+          [% END %]
         </div>
         <div class="">
           <span>パスワード：</span>
           <input type="password" class="form-control" name="password" required>
         </div>
         <input type="hidden" name="rm" value="login">
+        [% IF errPass %]
+          <p class="error">[% errPass %]</p>
+        [% END %]
         <button type="submit" class="btn btn-primary login-btn">ログイン</button>
       </div>
     </form>

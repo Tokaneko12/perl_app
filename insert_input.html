@@ -18,35 +18,35 @@
     新規登録
     [% END %]
   </h1>
-  <form action="memberview.cgi" method="post" enctype="application/x-www-form-urlencoded">
+  <form action="memberview.cgi" method="post" enctype="multipart/form-data">
     <div class="form-group">
       [% IF item %]
       <input type="hidden" name="id" value="[% item.id %]" required>
       <p class="name_txt">名前<span>*</span>:</p>
       <input type="text" class="form-control" name="userName" value="[% item.name %]" maxlength="50" required>
-      <p class="error">
-        <span class="invalid">※この項目は入力必須です。</span>
-      </p>
+      [% IF results.missing('userName') || results.invalid('userName') %]
+        [% results.msgs.err_userName %]
+      [% END %]
       <p class="memo_txt">メモ:</p>
       <textarea name="memo" class="form-control" rows="8" cols="32" maxlength="200">[% item.memo %]</textarea>
-      <p class="error">
-        <span class="invalid">※メモは200文字以内で入力してください</span>
-      </p>
+      [% IF results.invalid('memo') %]
+        [% results.msgs.err_memo %]
+      [% END %]
       <input type="hidden" name="rm" value="update_complete">
-      <!-- <input type="file" name="fileName" size="60"> -->
+      <!-- <input type="file" name="upload_file" size="60"> -->
       [% ELSE %]
       <p class="name_txt">名前<span>*</span>:</p>
       <input type="text" class="form-control" name="userName" maxlength="50" required>
-      <p class="error">
-        <span class="invalid">※この項目は入力必須です。</span>
-      </p>
-      <p class="memo_txt">メモ:</p>
-      <textarea class="form-control" name="memo" rows="8" cols="32" maxlength="200"></textarea>
-      <p class="error">
-        <span class="invalid">※メモは200文字以内で入力してください</span>
-      </p>
+      [% IF results.missing('userName') || results.invalid('userName') %]
+        [% results.msgs.err_userName %]
+      [% END %]
+      <p class="memo_txt">メモ(200字以内):</p>
+      <textarea class="form-control" name="memo" rows="8" cols="32"></textarea>
+      [% IF results.invalid('memo') %]
+        [% results.msgs.err_memo %]
+      [% END %]
       <input type="hidden" name="rm" value="input_complete">
-      <!-- <input type="file" name="fileName" size="60"> -->
+      <!-- <input type="file" name="upload_file" size="60"> -->
       [% END %]
       <div class="form-btns">
         <input type="submit" class="btn btn-primary" value="登録">

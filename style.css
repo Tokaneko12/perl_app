@@ -59,10 +59,6 @@ form textarea:focus:invalid {
   border: tomato 2px solid;
 }
 
-.error .invalid  {
-  display: none;
-}
-
 form input:invalid + .error .invalid {
   display: block;
 }
@@ -85,10 +81,6 @@ form textarea:focus:invalid + .error .invalid {
   margin-top: 10px;
 }
 
-textarea {
-  margin-bottom: 10px;
-}
-
 .form-btns {
   margin-top: 50px;
 }
@@ -96,4 +88,8 @@ textarea {
 .login-btn,
 .regist_input-btn {
   margin-top: 20px;
+}
+
+.error {
+  color: red;
 }
