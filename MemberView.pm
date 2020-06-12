@@ -182,7 +182,7 @@ sub do_logout {
   );
   $self->header_add(-cookie => $cookie); # クッキー設定
 
-  return $self->redirect('login.html', '302');
+  return $self->redirect('memberview.cgi', '302');
 }
 
 # 新規会員登録実行

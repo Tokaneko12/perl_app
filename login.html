@@ -18,7 +18,7 @@
           <span>メール：</span>
           <input type="email" class="form-control" name="email" value="[% formEmail %]" required>
           [% IF errMail %]
-            <p class="error">[% errMail %]</p>
+          <p class="error">[% errMail %]</p>
           [% END %]
         </div>
         <div class="">
@@ -27,7 +27,7 @@
         </div>
         <input type="hidden" name="rm" value="login">
         [% IF errPass %]
-          <p class="error">[% errPass %]</p>
+        <p class="error">[% errPass %]</p>
         [% END %]
         <button type="submit" class="btn btn-primary login-btn">ログイン</button>
       </div>
