@@ -14,20 +14,17 @@
     <h1>ログイン画面</h1>
     <form class="no-margin" action="memberview.cgi" method="post" enctype="application/x-www-form-urlencoded">
       <div class="form-group">
-        <div class="">
+        <div class="form_mail">
           <span>メール：</span>
           <input type="email" class="form-control" name="email" value="[% formEmail %]" required>
-          [% IF errMail %]
-          <p class="error">[% errMail %]</p>
-          [% END %]
         </div>
-        <div class="">
+        <div class="form_pass">
           <span>パスワード：</span>
           <input type="password" class="form-control" name="password" required>
         </div>
         <input type="hidden" name="rm" value="login">
-        [% IF errPass %]
-        <p class="error">[% errPass %]</p>
+        [% IF errMsg %]
+        <p class="error">[% errMsg %]</p>
         [% END %]
         <button type="submit" class="btn btn-primary login-btn">ログイン</button>
       </div>

@@ -4,7 +4,6 @@ use CGI::Application::Plugin::Forward;
 use CGI::Application::Plugin::Redirect;
 use CGI;
 use CGI::Session;
-use CGI::Carp qw(fatalsToBrowser); #デバック用(開発時以外はコメントアウト)
 use strict;
 use warnings;
 use Encode;
@@ -15,12 +14,15 @@ use Template::Stash::ForceUTF8;
 use Template;
 use Data::FormValidator;
 use Data::FormValidator::Constraints qw(:closures);
+use Data::Page;
+use Digest::MD5 qw(md5_hex);
+use File::Basename 'fileparse';
 
 ### 初期化
 sub cgiapp_init {
   my $self = shift;
   my $cgiNew = CGI->new;
-  my $dbh = DBI->connect('DBI:mysql:ATMARKIT:localhost', 'test', 'test2001');
+  my $dbh = DBI->connect('DBI:mysql:ATMARKIT:localhost', 'sessionUser', 'Ogq0cVuO');
   $dbh->{AutoCommit} = 0;
   $dbh->{RaiseError} = 1;
   $self->query->charset('UTF-8');
@@ -49,19 +51,59 @@ sub setup {
     'regist_input' => 'do_input_regist', #新規会員登録画面表示
     'regist' => 'do_regist', #新規会員登録実行
     'view' => 'do_view', #ユーザーデータ一覧表示
+    'search' => 'do_search', #ユーザー検索実行
     'form_input' => 'do_input', #ユーザー追加画面表示
     'input_complete' => 'do_create', #ユーザー追加実行
     'update_item' => 'do_upinput', #ユーザー編集画面表示
     'update_complete' => 'do_update', #ユーザー編集実行
-    'delete_item' => 'do_delete' #ユーザー削除実行
+    'delete_item' => 'do_delete', #ユーザー削除実行
+    'session_out' => 'session_out',
+    'redirect_login' => 'redirect_login'
   );
 }
 
 # エラー処理
 sub error {
-  my($self, $err) = shift;
+  my($self, $err) = @_;
 
   return $err;
+}
+
+# プレランモード設定
+sub cgiapp_prerun {
+  my $self = shift;
+  my $dbh = $self->param('dbh');
+  my $q = $self->param('cgiNew');
+  my $sid = $q->cookie('sessionID');
+  my $current_runmode = $self->get_current_runmode();
+  my $isInvalidSession = 0;
+
+  if($current_runmode !~/^(login_input|login|logout|regist_input|regist|error)$/) {
+    if(!$sid) {
+      #エラー処理
+      $isInvalidSession = 1;
+    } else {
+      my $session = CGI::Session->new("driver:MySQL", $sid, {Handle=>$dbh}); #mysqlの「sessions」テーブル
+
+      if($sid != $session->id) {
+        $session->delete();
+        $session->flush();
+        $isInvalidSession = 1;
+      }
+    }
+
+    if($isInvalidSession) {
+      return $self->prerun_mode('redirect_login');
+    }
+  }
+
+  my $dbh = DBI->connect('DBI:mysql:ATMARKIT:localhost', 'test', 'test2001');
+  $dbh->{AutoCommit} = 0;
+  $dbh->{RaiseError} = 1;
+
+  $self->param( # アプリケーション変数の設定
+    'dbh' => $dbh,
+  );
 }
 
 # アプリケーション実行後のクリーンアップ
@@ -72,29 +114,40 @@ sub teardown {
   $dbh->disconnect;
 }
 
+#
+sub redirect_login {
+  my $self = shift;
+  return $self->redirect('memberview.cgi?rm=login_input', '302');
+}
+
+# セッション切れ後のエラー表示画面
+sub session_out {
+  my $self = shift;
+  my $template = $self->param('template');
+  my $output;
+
+  $template->process(
+    'session_out.html',
+    {},
+    \$output,
+  ) || return $template->error();
+
+  return $output;
+}
+
 # ログイン入力画面
 sub do_input_login {
   my $self = shift;
-  my $dbh = $self->param('dbh');
-  my $q = $self->param('cgiNew');
-  my $sid = $q->cookie('sessionID') || undef;
-  my $session = CGI::Session->new("driver:MySQL", $sid, {Handle=>$dbh}); #mysqlの「sessions」テーブル
-  $session->expire("+1h");
+  my $template = $self->param('template');
+  my $output;
 
-  if($sid == $session->id) {
-    return $self->forward('view');
-  } else {
-    my $template = $self->param('template');
-    my $output;
+  $template->process(
+    'login.html',
+    {},
+    \$output,
+  ) || return $template->error();
 
-    $template->process(
-      'login.html',
-      {},
-      \$output,
-    ) || return $template->error();
-
-    return $output;
-  }
+  return $output;
 }
 
 # 新規会員登録入力画面
@@ -107,7 +160,7 @@ sub do_input_regist {
     'regist.html',
     {},
     \$output,
-  ) || print $template->error();
+  ) || return $template->error();
   return $output;
 }
 
@@ -121,64 +174,60 @@ sub do_login {
   my $formEmail = $self->query->param('email');
   my $formPass = $self->query->param('password');
 
-  my $sth = $dbh->prepare("SELECT * FROM authuser where email = '$formEmail'");
-  $sth->execute() || die($DBI::errstr);
+  my $sth = $dbh->prepare("SELECT * FROM authuser where email = ?");
+  $sth->execute($formEmail) || die($DBI::errstr);
   my $r = $sth->fetchrow_hashref();
+  my $passData = $r->{password};
+  my $salt = substr($passData, 0, 2);
 
-  if($r) {
-    my $passData = $r->{password};
-    my $salt = substr($passData, 0, 2);
-
-    if(crypt($formPass, $salt) eq $passData) {
-      my $q = $self->param('cgiNew');
-      my $session = CGI::Session->new("driver:MySQL", undef, {Handle=>$dbh});
-      $session->expire('+1h');
-      my $CGISESSID = $session->id();
-
-      my $cookie = $q->cookie(
-        -name    => 'sessionID',
-        -value   => $CGISESSID,
-        -expires => '+1h',
-      );
-
-      $self->header_add(-cookie => $cookie); # クッキー設定
-
-      return $self->redirect('memberview.cgi?rm=view', '302');
-    } else {
-      $template->process(
-        'login.html',
-        {
-          formEmail => $formEmail,
-          errPass => "入力したパスワードは間違っています。"
-        },
-        \$output,
-      ) || return $template->error();
-
-      return $output;
-    }
-  } else {
+  # 入力エラー発生時
+  if(!$r || (crypt($formPass, $salt) ne $passData)) {
     $template->process(
       'login.html',
       {
         formEmail => $formEmail,
-        errMail => "入力したメールアドレスは存在しません。"
+        errMsg => "※メールアドレスもしくはパスワードが間違っています。"
       },
       \$output,
     ) || return $template->error();
 
     return $output;
   }
+
+  my $dbh = DBI->connect('DBI:mysql:ATMARKIT:localhost', 'test', 'test2001');
+  $dbh->{AutoCommit} = 0;
+  $dbh->{RaiseError} = 1;
+
+  $self->param( # アプリケーション変数の設定
+    'dbh' => $dbh,
+  );
+
+  my $q = $self->param('cgiNew');
+  my $session = CGI::Session->new("driver:MySQL", undef, {Handle=>$dbh});
+  $session->expire('+24h');
+  my $CGISESSID = $session->id();
+
+  my $cookie = $q->cookie(
+    -name    => 'sessionID',
+    -value   => $CGISESSID,
+    -expires => '+24h',
+  );
+
+  $self->header_add(-cookie => $cookie); # クッキー設定
+
+  return $self->redirect('memberview.cgi?rm=view', '302');
 }
 
 # ログアウト実行
 sub do_logout {
   my $self = shift;
   my $q = $self->param('cgiNew');
+  my $dbh = DBI->connect('DBI:mysql:ATMARKIT:localhost', 'sessionUser', 'Ogq0cVuO');
 
   my $cookie = $q->cookie(
     -name    => 'sessionID',
     -value   => '',
-    -expires => '+1h',
+    -expires => '-1d',
   );
   $self->header_add(-cookie => $cookie); # クッキー設定
 
@@ -196,8 +245,8 @@ sub do_regist {
     required => [qw(password), qw(email)],
 
     constraint_methods => {
-      password=>qr/^[A-Za-z0-9]$/,
-      email => email(),
+      password=>qr/^[A-Za-z0-9]{12,32}$/,
+      email => qr/^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/,
     },
 
     msgs => {
@@ -210,6 +259,7 @@ sub do_regist {
 
   my $results = Data::FormValidator->check($self->query, $profile);
 
+  # 入力エラー発生時
   if ($results->has_invalid or $results->has_missing) {
     $template->process(
       'regist.html',
@@ -220,27 +270,27 @@ sub do_regist {
     ) || return $template->error();
 
     return $output;
-  } else {
-    eval {
-      my $formEmail = $self->query->param('email');
-      my $formPass = $self->query->param('password');
-      my $salt = "xy";
-      my $passCrypt = crypt($formPass, $salt);
-      $dbh->do("INSERT INTO authuser (email, password) VALUES('$formEmail', '$passCrypt')");
-      $dbh->commit;
-    };
-    if($@) {
-      $dbh->rollback();
-    }
-
-    $template->process(
-      'complete.html',
-      {},
-      \$output,
-    ) || print $template->error();
-
-    return $output;
   }
+
+  eval {
+    my $formEmail = $self->query->param('email');
+    my $formPass = $self->query->param('password');
+    my $salt = "xy";
+    my $passCrypt = crypt($formPass, $salt);
+    $dbh->do("INSERT INTO authuser (email, password) VALUES('$formEmail', '$passCrypt')");
+    $dbh->commit;
+  };
+  if($@) {
+    $dbh->rollback();
+  }
+
+  $template->process(
+    'complete.html',
+    {},
+    \$output,
+  ) || return $template->error();
+
+  return $output;
 }
 
 # 名簿一覧画面表示
@@ -248,6 +298,9 @@ sub do_view {
   my $self = shift;
   my $dbh = $self->param('dbh');
   my $template = $self->param('template');
+  my $q = $self->param('cgiNew');
+  my $pageId = $q->param('id') ? $q->param('id') : 1;
+  my $page = Data::Page->new();
   my $output;
 
   my $sth = $dbh->prepare("SELECT * FROM list ORDER BY id ASC");  # ソートなしだと順不動になるのでORDER BY は必須
@@ -257,13 +310,49 @@ sub do_view {
   while ($r = $sth->fetchrow_hashref()) {
     push(@ref, $r);
   }
+  my $itemLength = @ref;
+  $page->total_entries($itemLength);
+  $page->entries_per_page(10);
+  $page->current_page($pageId);
+  my @visibleItems =  $page->splice(\@ref);
 
   $template->process(
     'list.html',
-    { people => \@ref },
+    {
+      people => \@visibleItems,
+      page => $page,
+    },
     \$output,
   ) || return $template->error();
 
+  return $output;
+}
+
+# ユーザー検索実行
+sub do_search {
+  my $self = shift;
+  my $dbh = $self->param('dbh');
+  my $template = $self->param('template');
+  my $output;
+  my $id = $self->query->param('pageId') ? $self->query->param('pageId') : 1;
+  my $search = $self->query->param('search');
+
+  # MySQLの各カラムにngram設定済み(ダブルグラム)
+  my $sth = $dbh->prepare("SELECT * FROM list where id=? OR match(name,memo,filename) against(? IN BOOLEAN MODE) ORDER BY id ASC");  # ソートなしだと順不動になるのでORDER BY は必須
+  $sth->execute($search, $search) || die($DBI::errstr);
+  my @ref;  # これをテンプレートに渡す
+  my $r;
+  while ($r = $sth->fetchrow_hashref()) {
+    push(@ref, $r);
+  }
+  $template->process(
+    'list.html',
+    {
+      people => \@ref,
+      toplink => 1,
+    },
+    \$output,
+  ) || return $template->error();
   return $output;
 }
 
@@ -277,7 +366,7 @@ sub do_input {
     'insert_input.html',
     {},
     \$output,
-  ) || print $template->error();
+  ) || return $template->error();
 
   return $output;
 }
@@ -289,8 +378,9 @@ sub do_create {
   my $template = $self->param('template');
   my $formName = $self->query->param('userName');
   my $formMemo = $self->query->param('memo');
-  my $fileName = $self->query->param('fileName');
   my $output;
+  my $filename = $self->query->param('upload_file');
+  my ($bytesread, $buffer, $bufferfile);
 
   # 入力チェック
   my $profile = {
@@ -313,6 +403,7 @@ sub do_create {
 
   my $results = Data::FormValidator->check($self->query, $profile);
 
+  # 入力エラー発生時
   if ($results->has_invalid or $results->has_missing) {
     $template->process(
       'insert_input.html',
@@ -323,37 +414,46 @@ sub do_create {
     ) || return $template->error();
 
     return $output;
-  } else {
-    eval {
-      my $sth = $dbh->prepare("INSERT INTO list (name, memo) VALUES('$formName', '$formMemo')"); #id項目はMySQLのAUTO_INCREMENTを使用
-      $sth->execute() || die ($DBI::errstr);
-      $dbh->commit;
-    };
-    if($@) {
-      $dbh->rollback();
-    }
-
-    $template->process(
-      'complete.html',
-      {},
-      \$output,
-    ) || return $template->error();
-
-    return $output;
   }
-  # my $filename = $self->query->param('upload_file');
-  # my ($bytesread, $buffer, $bufferfile);
-  # # ファイルをバイナリデータに変換
-  # while($bytesread = read($filename, $buffer, 2048)) {
-  #   $bufferfile .= $buffer;
-  # }
-  # # ファイルの保存処理
-  # open(OUT, "> filedata/$filename.txt") or return("ファイルの保存に失敗しました。");
-  # binmode(OUT);
-  # print OUT $bufferfile;
-  # close OUT;
-  # return $bufferfile;
-  #
+
+  if($filename) {
+    # ファイルをバイナリデータに変換
+    while(read($filename, $buffer, 1024)) {
+      $bufferfile .= $buffer;
+    }
+    # 作成ファイル名のmd5ダイジェストを生成
+    my $mdfilename = md5_hex($filename);
+    my $targetdir = './' . substr($mdfilename, 0, 2);
+    # 保存先ディレクトリがなければ新規作成
+    if (!-d $targetdir) {
+      mkdir $targetdir;
+    }
+    my $regex_suffix = qr/\.[^\.]+$/;
+    my $suffix = (fileparse $filename, $regex_suffix)[2];
+    my $openfilename = $targetdir . '/' . $mdfilename . $suffix;
+    # ファイルの保存処理
+    open(OUT, "> $openfilename") or return("ファイルの保存に失敗しました。");
+    binmode(OUT); #改行を行わない保存
+    print OUT $bufferfile;
+    close OUT;
+  }
+
+  eval {
+    my $sth = $dbh->prepare("INSERT INTO list (name, memo, filename) VALUES(?, ?, ?)"); #id項目はMySQLのAUTO_INCREMENTを使用
+    $sth->execute($formName, $formMemo, $filename) || die ($DBI::errstr);
+    $dbh->commit;
+  };
+  if($@) {
+    $dbh->rollback();
+  }
+
+  $template->process(
+    'complete.html',
+    {},
+    \$output,
+  ) || return $template->error();
+
+  return $output;
 }
 
 # 更新用入力画面用意
@@ -363,16 +463,16 @@ sub do_upinput {
   my $template = $self->param('template');
   my $output;
 
-  my $updId = $self->query->param('id');
-  my $sth = $dbh->prepare("SELECT * FROM list where id = '$updId'");  # ソートなしだと順不動になるのでORDER BY は必須
-  $sth->execute() || die($DBI::errstr);
+  my $updId = $self->query->param('itemId');
+  my $sth = $dbh->prepare("SELECT * FROM list where id = ?");
+  $sth->execute($updId) || die($DBI::errstr);
   my $r = $sth->fetchrow_hashref();
 
   $template->process(
     'insert_input.html',
     { item => $r },
     \$output,
-  ) || print $template->error();
+  ) || return $template->error();
 
   return $output;
 }
@@ -386,6 +486,8 @@ sub do_update {
   my $upName = $self->query->param('userName');
   my $upMemo = $self->query->param('memo');
   my $output;
+  my $filename = $self->query->param('upload_file');
+  my ($bytesread, $buffer, $bufferfile);
 
   # 入力チェック
   my $profile = {
@@ -408,6 +510,7 @@ sub do_update {
 
   my $results = Data::FormValidator->check($self->query, $profile);
 
+  # 入力エラー発生時
   if ($results->has_invalid or $results->has_missing) {
     my $dbh = $self->param('dbh');
 
@@ -425,36 +528,66 @@ sub do_update {
     ) || return $template->error();
 
     return $output;
-  } else {
-    eval {
-      $dbh->do("UPDATE list SET name = '$upName', memo = '$upMemo' WHERE id = '$updId'");
-      $dbh->commit;
-    };
-    if($@) {
-      $dbh->rollback();
-    }
-    $template->process(
-      'complete.html',
-      {},
-      \$output,
-    ) || print $template->error();
-
-    return $output;
   }
+
+  if($filename) {
+    # 既存ファイルの削除処理
+    my $current_filename = $self->query->param('current_filename');
+    my $delfilename = md5_hex($current_filename);
+    my $deldir = './' . substr($delfilename, 0, 2);
+    unlink $deldir . '/' . $delfilename;
+    # 作成ファイルをバイナリデータに変換
+    while(read($filename, $buffer, 1024)) {
+      $bufferfile .= $buffer;
+    }
+    # 作成ファイル名のmd5ダイジェストを生成
+    my $mdfilename = md5_hex($filename);
+    my $targetdir = './' . substr($mdfilename, 0, 2);
+    # 保存先ディレクトリがなければ新規作成
+    if (!-d $targetdir) {
+      mkdir $targetdir;
+    }
+    my $openfilename = $targetdir . '/' . $mdfilename;
+    # ファイルの保存処理
+    open(OUT, "> $openfilename") or return("ファイルの更新に失敗しました。");
+    binmode(OUT); #改行を行わない保存
+    print OUT $bufferfile;
+    close OUT;
+  }
+  eval {
+    my $sth = $dbh->prepare("UPDATE list SET name = ?, memo = ?, filename = ? where id = ?"); #id項目はMySQLのAUTO_INCREMENTを使用
+    $sth->execute($upName, $upMemo, $filename, $updId) || die ($DBI::errstr);
+    $dbh->commit;
+  };
+  if($@) {
+    $dbh->rollback();
+  }
+  $template->process(
+    'complete.html',
+    {},
+    \$output,
+  ) || return $template->error();
+
+  return $output;
 }
 
 # 削除実行
 sub do_delete {
   my $self = shift;
   my $dbh = $self->param('dbh');
+  my $filename = $self->query->param('filename');
   eval {
-    my $delId = $self->query->param('id');
+    my $delId = $self->query->param('itemId');
     $dbh->do("DELETE FROM list WHERE id = '$delId'");
     $dbh->commit;
   };
   if($@) {
     $dbh->rollback();
   }
+
+  my $delfilename = md5_hex($filename);
+  my $deldir = './' . substr($delfilename, 0, 2);
+  unlink $deldir . '/' . $delfilename;
   return $self->forward('view');
 }
 
