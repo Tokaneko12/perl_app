@@ -36,9 +36,11 @@
         <td>[% p.memo %]</td>
         <td class="txt_center file_table">
           [% IF p.filename %]
-          <a href="filedata/[% p.filename %]" target="_blank">
-            [% p.filename %]
-          </a>
+          <form class="no-margin" action="memberview.cgi" method="post" enctype="application/x-www-form-urlencoded" target="_blank">
+            <input type="hidden" name="rm" value="open_file">
+            <input type="hidden" name="filename" value="[% p.filename %]">
+            <button type="submit" class="btn file_btn">[% p.filename %]</button>
+          </form>
           [% END %]
         </td>
         <td>

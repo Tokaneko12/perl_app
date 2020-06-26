@@ -57,8 +57,8 @@ sub setup {
     'update_item' => 'do_upinput', #ユーザー編集画面表示
     'update_complete' => 'do_update', #ユーザー編集実行
     'delete_item' => 'do_delete', #ユーザー削除実行
-    'session_out' => 'session_out',
-    'redirect_login' => 'redirect_login'
+    'redirect_login' => 'redirect_login', #セッション切れ時のリダイレクト処理
+    'open_file' => 'do_openfile', #ファイル内容の表示
   );
 }
 
@@ -97,7 +97,7 @@ sub cgiapp_prerun {
     }
   }
 
-  my $dbh = DBI->connect('DBI:mysql:ATMARKIT:localhost', 'test', 'test2001');
+  $dbh = DBI->connect('DBI:mysql:ATMARKIT:localhost', 'test', 'test2001');
   $dbh->{AutoCommit} = 0;
   $dbh->{RaiseError} = 1;
 
@@ -118,21 +118,6 @@ sub teardown {
 sub redirect_login {
   my $self = shift;
   return $self->redirect('memberview.cgi?rm=login_input', '302');
-}
-
-# セッション切れ後のエラー表示画面
-sub session_out {
-  my $self = shift;
-  my $template = $self->param('template');
-  my $output;
-
-  $template->process(
-    'session_out.html',
-    {},
-    \$output,
-  ) || return $template->error();
-
-  return $output;
 }
 
 # ログイン入力画面
@@ -194,7 +179,7 @@ sub do_login {
     return $output;
   }
 
-  my $dbh = DBI->connect('DBI:mysql:ATMARKIT:localhost', 'test', 'test2001');
+  $dbh = DBI->connect('DBI:mysql:ATMARKIT:localhost', 'test', 'test2001');
   $dbh->{AutoCommit} = 0;
   $dbh->{RaiseError} = 1;
 
@@ -356,6 +341,24 @@ sub do_search {
   return $output;
 }
 
+# ファイル内容の表示
+sub do_openfile {
+  my $self = shift;
+  my $filename = $self->query->param('filename');
+
+  # 読み込みファイル名のmd5ダイジェストを生成
+  my $regex_suffix = qr/\.[^\.]+$/;
+  my $filefrontname = (fileparse $filename, $regex_suffix)[0];
+  my $mdfilename = md5_hex($filefrontname);
+  my $targetdir = './' . substr($mdfilename, 0, 2);
+
+  # 読み込みファイル名(ディレクトリ + md5ダイジェスト + 拡張子)
+  my $openfilename = $targetdir . '/' . $mdfilename . (fileparse $filename, $regex_suffix)[2];
+
+  # ファイルの表示処理
+  return $self->redirect($openfilename, '302');
+}
+
 # 新規登録入力画面用意
 sub do_input {
   my $self = shift;
@@ -422,15 +425,16 @@ sub do_create {
       $bufferfile .= $buffer;
     }
     # 作成ファイル名のmd5ダイジェストを生成
-    my $mdfilename = md5_hex($filename);
+    my $regex_suffix = qr/\.[^\.]+$/;
+    my $filefrontname = (fileparse $filename, $regex_suffix)[0];
+    my $mdfilename = md5_hex($filefrontname);
     my $targetdir = './' . substr($mdfilename, 0, 2);
     # 保存先ディレクトリがなければ新規作成
     if (!-d $targetdir) {
       mkdir $targetdir;
     }
-    my $regex_suffix = qr/\.[^\.]+$/;
-    my $suffix = (fileparse $filename, $regex_suffix)[2];
-    my $openfilename = $targetdir . '/' . $mdfilename . $suffix;
+    # 保存ファイル名(ディレクトリ + md5ダイジェスト + 拡張子)
+    my $openfilename = $targetdir . '/' . $mdfilename . (fileparse $filename, $regex_suffix)[2];
     # ファイルの保存処理
     open(OUT, "> $openfilename") or return("ファイルの保存に失敗しました。");
     binmode(OUT); #改行を行わない保存
@@ -541,13 +545,16 @@ sub do_update {
       $bufferfile .= $buffer;
     }
     # 作成ファイル名のmd5ダイジェストを生成
-    my $mdfilename = md5_hex($filename);
+    my $regex_suffix = qr/\.[^\.]+$/;
+    my $filefrontname = (fileparse $filename, $regex_suffix)[0];
+    my $mdfilename = md5_hex($filefrontname);
     my $targetdir = './' . substr($mdfilename, 0, 2);
     # 保存先ディレクトリがなければ新規作成
     if (!-d $targetdir) {
       mkdir $targetdir;
     }
-    my $openfilename = $targetdir . '/' . $mdfilename;
+    # 保存ファイル名(ディレクトリ + md5ダイジェスト + 拡張子)
+    my $openfilename = $targetdir . '/' . $mdfilename . (fileparse $filename, $regex_suffix)[2];
     # ファイルの保存処理
     open(OUT, "> $openfilename") or return("ファイルの更新に失敗しました。");
     binmode(OUT); #改行を行わない保存
@@ -585,9 +592,14 @@ sub do_delete {
     $dbh->rollback();
   }
 
-  my $delfilename = md5_hex($filename);
+  # 削除ファイル名のmd5ダイジェストを生成
+  my $regex_suffix = qr/\.[^\.]+$/;
+  my $filefrontname = (fileparse $filename, $regex_suffix)[0];
+  my $delfilename = md5_hex($filefrontname);
   my $deldir = './' . substr($delfilename, 0, 2);
-  unlink $deldir . '/' . $delfilename;
+
+  # 削除処理
+  unlink $deldir . '/' . $delfilename . (fileparse $filename, $regex_suffix)[2];
   return $self->forward('view');
 }
 

@@ -164,3 +164,23 @@ form textarea:focus:invalid + .error .invalid {
   font-size: 0.9rem;
   margin-left: 10px;
 }
+
+.file_btn {
+  color: #007aff;
+  background-color: transparent;
+  border: none;
+  padding: 0 10px;
+}
+
+.file_btn:hover {
+  color: #007aff;
+  text-decoration: underline;
+  border-color: #fff;
+  background-color: transparent;
+}
+
+.file_btn:active {
+  color: #007aff;
+  outline: none;
+  background-color: transparent;
+}
