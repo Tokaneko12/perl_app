@@ -224,6 +224,8 @@ sub do_regist {
   my $self = shift;
   my $dbh = $self->param('dbh');
   my $template = $self->param('template');
+  my $formEmail = $self->query->param('email');
+  my $formPass = $self->query->param('password');
   my $output;
 
   my $profile = {
@@ -257,9 +259,25 @@ sub do_regist {
     return $output;
   }
 
+  # emailデータの存在チェック
+  my $sth = $dbh->prepare("SELECT * FROM authuser WHERE email = ?");
+  $sth->execute($formEmail);
+  my $data = $sth->fetchrow_hashref;
+
+  # 重複emailデータがある場合入力画面でエラー表示
+  if($data) {
+    $template->process(
+      'regist.html',
+      {
+        email_double => 1,
+      },
+      \$output,
+    ) || return $template->error();
+
+    return $output;
+  }
+
   eval {
-    my $formEmail = $self->query->param('email');
-    my $formPass = $self->query->param('password');
     my $salt = "xy";
     my $passCrypt = crypt($formPass, $salt);
     $dbh->do("INSERT INTO authuser (email, password) VALUES('$formEmail', '$passCrypt')");

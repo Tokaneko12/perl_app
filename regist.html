@@ -20,6 +20,9 @@
           [% IF results.missing('email') || results.invalid('email') %]
             [% results.msgs.err_email %]
           [% END %]
+          [% IF email_double %]
+            <p class="error">このメールアドレスは既に登録されています。</p>
+          [% END %]
         </div>
         <div class="">
           <span>パスワード：</span>
