@@ -78,6 +78,15 @@ sub cgiapp_prerun {
   my $current_runmode = $self->get_current_runmode();
   my $isInvalidSession = 0;
 
+  my ($sec, $min, $hour, $mday, $mon, $year) = localtime();
+  my $fmt0 = "%04d/%02d/%02d %02d:%02d:%02d";
+  my $day0 = sprintf($fmt0, $year+1900,$mon+1,$mday,$hour+9,$min,$sec);
+
+  my $filnam = "acclogf.cgi";
+  open(FP,">>$filnam");
+  print FP "$day0,$current_runmode\n";
+  close(FP);
+
   if($current_runmode !~/^(login_input|login|logout|regist_input|regist|error)$/) {
     if(!$sid) {
       #エラー処理
