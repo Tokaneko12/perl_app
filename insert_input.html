@@ -50,7 +50,11 @@
       <input type="file" class="file_select" name="upload_file" size="60">
       [% END %]
       <div class="form-btns">
+        [% IF item %]
+        <input type="submit" class="btn btn-primary" value="更新">
+        [% ELSE %]
         <input type="submit" class="btn btn-primary" value="登録">
+        [% END %]
         <input type="reset" class="btn btn-secondary" value="リセット">
       </div>
     </div>

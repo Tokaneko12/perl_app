@@ -41,6 +41,12 @@
             <input type="hidden" name="filename" value="[% p.filename %]">
             <button type="submit" class="btn file_btn">[% p.filename %]</button>
           </form>
+          <form class="no-margin form--fdelete" action="memberview.cgi" method="post" onSubmit="return confirm('「ID[% p.id %] [% p.filename %]」のファイルを削除してもよろしいですか？') " enctype="application/x-www-form-urlencoded">
+            <input type="hidden" name="rm" value="delete_file">
+            <input type="hidden" name="itemId" value="[% p.id %]">
+            <input type="hidden" name="filename" value="[% p.filename %]">
+            <button type="submit" class="btn file_btn--delete">×</button>
+          </form>
           [% END %]
         </td>
         <td>
@@ -51,7 +57,7 @@
           </form>
         </td>
         <td>
-          <form class="no-margin" action="memberview.cgi" method="post" onSubmit="return confirm('削除してもよろしいですか？') " enctype="application/x-www-form-urlencoded">
+          <form class="no-margin" action="memberview.cgi" method="post" onSubmit="return confirm('「ID[% p.id %] [% p.name %]」のデータを削除してもよろしいですか？') " enctype="application/x-www-form-urlencoded">
             <input type="hidden" name="rm" value="delete_item">
             <input type="hidden" name="itemId" value="[% p.id %]">
             <input type="hidden" name="filename" value="[% p.filename %]">

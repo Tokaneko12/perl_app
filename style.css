@@ -54,6 +54,10 @@ th, td {
   padding: 5px 10px;
 }
 
+td {
+  position: relative;
+}
+
 /*========================================
 
  フォーム設定
@@ -169,7 +173,7 @@ form textarea:focus:invalid + .error .invalid {
   color: #007aff;
   background-color: transparent;
   border: none;
-  padding: 0 10px;
+  padding: 0 18px;
 }
 
 .file_btn:hover {
@@ -183,4 +187,18 @@ form textarea:focus:invalid + .error .invalid {
   color: #007aff;
   outline: none;
   background-color: transparent;
+}
+
+.form--fdelete {
+  position: absolute;
+  top: -5px;
+  right: 0;
+}
+
+.file_btn--delete {
+  color: red;
+  font-size: 1.4rem;
+  font-weight: bold;
+  padding: 0 5px;
+  border-radius: 50%;
 }

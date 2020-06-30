@@ -59,6 +59,7 @@ sub setup {
     'delete_item' => 'do_delete', #ユーザー削除実行
     'redirect_login' => 'redirect_login', #セッション切れ時のリダイレクト処理
     'open_file' => 'do_openfile', #ファイル内容の表示
+    'delete_file' => 'do_deletefile', #ファイルの削除
   );
 }
 
@@ -386,6 +387,34 @@ sub do_openfile {
   return $self->redirect($openfilename, '302');
 }
 
+# ファイルの削除
+sub do_deletefile {
+  my $self = shift;
+  my $dbh = $self->param('dbh');
+  my $filename = $self->query->param('filename');
+
+  eval {
+    my $itemId = $self->query->param('itemId');
+    $dbh->do("UPDATE list SET filename = '' where id = $itemId");
+    $dbh->commit;
+  };
+  if($@) {
+    $dbh->rollback();
+  }
+
+  # 削除ファイル名のmd5ダイジェストを生成
+  my $regex_suffix = qr/\.[^\.]+$/;
+  my $filefrontname = (fileparse $filename, $regex_suffix)[0];
+  my $delfilename = md5_hex($filefrontname);
+  my $deldir = './' . substr($delfilename, 0, 2);
+
+  # 削除処理
+  unlink $deldir . '/' . $delfilename . (fileparse $filename, $regex_suffix)[2];
+
+  # ファイルの表示処理
+  return $self->redirect('./memberview.cgi?rm=view', '302');
+}
+
 # 新規登録入力画面用意
 sub do_input {
   my $self = shift;
@@ -518,6 +547,7 @@ sub do_update {
   my $upMemo = $self->query->param('memo');
   my $output;
   my $filename = $self->query->param('upload_file');
+  my $curfilename = $self->query->param('current_filename');
   my ($bytesread, $buffer, $bufferfile);
 
   # 入力チェック
@@ -563,9 +593,11 @@ sub do_update {
 
   if($filename) {
     # 既存ファイルの削除処理
-    my $current_filename = $self->query->param('current_filename');
+    my $del_suffix = qr/\.[^\.]+$/;
+    my $current_filename = (fileparse $filename, $del_suffix)[0];
     my $delfilename = md5_hex($current_filename);
     my $deldir = './' . substr($delfilename, 0, 2);
+
     unlink $deldir . '/' . $delfilename;
     # 作成ファイルをバイナリデータに変換
     while(read($filename, $buffer, 1024)) {
@@ -587,6 +619,8 @@ sub do_update {
     binmode(OUT); #改行を行わない保存
     print OUT $bufferfile;
     close OUT;
+  } else {
+    $filename = $curfilename ? $curfilename : 0;
   }
   eval {
     my $sth = $dbh->prepare("UPDATE list SET name = ?, memo = ?, filename = ? where id = ?"); #id項目はMySQLのAUTO_INCREMENTを使用
