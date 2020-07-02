@@ -17,6 +17,8 @@ use Data::FormValidator::Constraints qw(:closures);
 use Data::Page;
 use Digest::MD5 qw(md5_hex);
 use File::Basename 'fileparse';
+use POSIX qw(floor ceil);
+use File::Temp;
 
 ### 初期化
 sub cgiapp_init {
@@ -60,6 +62,7 @@ sub setup {
     'redirect_login' => 'redirect_login', #セッション切れ時のリダイレクト処理
     'open_file' => 'do_openfile', #ファイル内容の表示
     'delete_file' => 'do_deletefile', #ファイルの削除
+    'loglist' => 'do_viewlog', #ファイルの削除
   );
 }
 
@@ -124,7 +127,7 @@ sub teardown {
   $dbh->disconnect;
 }
 
-#
+# セッション切れ時のログイン画面表示
 sub redirect_login {
   my $self = shift;
   return $self->redirect('memberview.cgi?rm=login_input', '302');
@@ -142,20 +145,6 @@ sub do_input_login {
     \$output,
   ) || return $template->error();
 
-  return $output;
-}
-
-# 新規会員登録入力画面
-sub do_input_regist {
-  my $self = shift;
-  my $template = $self->param('template');
-  my $output;
-
-  $template->process(
-    'regist.html',
-    {},
-    \$output,
-  ) || return $template->error();
   return $output;
 }
 
@@ -229,6 +218,20 @@ sub do_logout {
   return $self->redirect('memberview.cgi', '302');
 }
 
+# 新規会員登録入力画面
+sub do_input_regist {
+  my $self = shift;
+  my $template = $self->param('template');
+  my $output;
+
+  $template->process(
+    'regist.html',
+    {},
+    \$output,
+  ) || return $template->error();
+  return $output;
+}
+
 # 新規会員登録実行
 sub do_regist {
   my $self = shift;
@@ -243,7 +246,7 @@ sub do_regist {
 
     constraint_methods => {
       password=>qr/^[A-Za-z0-9]{12,32}$/,
-      email => qr/^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/,
+      email => qr/^[a-z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)*$/,
     },
 
     msgs => {
@@ -313,27 +316,30 @@ sub do_view {
   my $template = $self->param('template');
   my $q = $self->param('cgiNew');
   my $pageId = $q->param('id') ? $q->param('id') : 1;
+  my $search = $q->param('search') ? $q->param('search') : 0;
   my $page = Data::Page->new();
   my $output;
 
-  my $sth = $dbh->prepare("SELECT * FROM list ORDER BY id ASC");  # ソートなしだと順不動になるのでORDER BY は必須
-  $sth->execute() || die($DBI::errstr);
+  my $cnt_sth = $dbh->prepare("SELECT COUNT(id) FROM list ORDER BY id ASC");  # ソートなしだと順不動になるのでORDER BY は必須
+  $cnt_sth->execute() || die($DBI::errstr);
+  my $cnt = $cnt_sth->fetchrow_array;
+  my $per_page = 10; #ページ毎の表示数
+  my $pageLength = ceil($cnt / $per_page); #合計ページ数
+
+  my $sth = $dbh->prepare("SELECT * FROM list ORDER BY id ASC LIMIT ? OFFSET ?");  # ソートなしだと順不動になるのでORDER BY は必須
+  $sth->execute($per_page, ($pageId - 1) * 10) || die($DBI::errstr);
   my @ref;  # これをテンプレートに渡す
   my $r;
   while ($r = $sth->fetchrow_hashref()) {
     push(@ref, $r);
   }
-  my $itemLength = @ref;
-  $page->total_entries($itemLength);
-  $page->entries_per_page(10);
-  $page->current_page($pageId);
-  my @visibleItems =  $page->splice(\@ref);
 
   $template->process(
     'list.html',
     {
-      people => \@visibleItems,
-      page => $page,
+      people => \@ref,
+      page_length => $pageLength,
+      current_page => $pageId
     },
     \$output,
   ) || return $template->error();
@@ -346,73 +352,39 @@ sub do_search {
   my $self = shift;
   my $dbh = $self->param('dbh');
   my $template = $self->param('template');
+  my $q = $self->param('cgiNew');
   my $output;
-  my $id = $self->query->param('pageId') ? $self->query->param('pageId') : 1;
+  my $page = Data::Page->new();
+  my $pageId = $q->param('id') ? $q->param('id') : 1;
   my $search = $self->query->param('search');
 
+  my $cnt_sth = $dbh->prepare("SELECT COUNT(id) FROM list where id=? OR match(name,memo,filename) against(? IN BOOLEAN MODE) ORDER BY id ASC");  # ソートなしだと順不動になるのでORDER BY は必須
+  $cnt_sth->execute($search, $search) || die($DBI::errstr);
+  my $cnt = $cnt_sth->fetchrow_array;
+  my $per_page = 10; #ページ毎の表示数
+  my $pageLength = ceil($cnt / $per_page); #合計ページ数
+
   # MySQLの各カラムにngram設定済み(ダブルグラム)
-  my $sth = $dbh->prepare("SELECT * FROM list where id=? OR match(name,memo,filename) against(? IN BOOLEAN MODE) ORDER BY id ASC");  # ソートなしだと順不動になるのでORDER BY は必須
-  $sth->execute($search, $search) || die($DBI::errstr);
+  my $sth = $dbh->prepare("SELECT * FROM list where id=? OR match(name,memo,filename) against(? IN BOOLEAN MODE) ORDER BY id ASC LIMIT 10 OFFSET ?");  # ソートなしだと順不動になるのでORDER BY は必須
+  $sth->execute($search, $search, ($pageId - 1) * 10) || die($DBI::errstr);
   my @ref;  # これをテンプレートに渡す
   my $r;
   while ($r = $sth->fetchrow_hashref()) {
     push(@ref, $r);
   }
+
   $template->process(
     'list.html',
     {
       people => \@ref,
+      page_length => $pageLength,
+      current_page => $pageId,
+      search_word => $search,
       toplink => 1,
     },
     \$output,
   ) || return $template->error();
   return $output;
-}
-
-# ファイル内容の表示
-sub do_openfile {
-  my $self = shift;
-  my $filename = $self->query->param('filename');
-
-  # 読み込みファイル名のmd5ダイジェストを生成
-  my $regex_suffix = qr/\.[^\.]+$/;
-  my $filefrontname = (fileparse $filename, $regex_suffix)[0];
-  my $mdfilename = md5_hex($filefrontname);
-  my $targetdir = './' . substr($mdfilename, 0, 2);
-
-  # 読み込みファイル名(ディレクトリ + md5ダイジェスト + 拡張子)
-  my $openfilename = $targetdir . '/' . $mdfilename . (fileparse $filename, $regex_suffix)[2];
-
-  # ファイルの表示処理
-  return $self->redirect($openfilename, '302');
-}
-
-# ファイルの削除
-sub do_deletefile {
-  my $self = shift;
-  my $dbh = $self->param('dbh');
-  my $filename = $self->query->param('filename');
-
-  eval {
-    my $itemId = $self->query->param('itemId');
-    $dbh->do("UPDATE list SET filename = '' where id = $itemId");
-    $dbh->commit;
-  };
-  if($@) {
-    $dbh->rollback();
-  }
-
-  # 削除ファイル名のmd5ダイジェストを生成
-  my $regex_suffix = qr/\.[^\.]+$/;
-  my $filefrontname = (fileparse $filename, $regex_suffix)[0];
-  my $delfilename = md5_hex($filefrontname);
-  my $deldir = './' . substr($delfilename, 0, 2);
-
-  # 削除処理
-  unlink $deldir . '/' . $delfilename . (fileparse $filename, $regex_suffix)[2];
-
-  # ファイルの表示処理
-  return $self->redirect('./memberview.cgi?rm=view', '302');
 }
 
 # 新規登録入力画面用意
@@ -476,9 +448,27 @@ sub do_create {
   }
 
   if($filename) {
+    # 一時ファイル作成
+    my $fh = File::Temp->new();
+    open FILE, '>', $fh;
     # ファイルをバイナリデータに変換
     while(read($filename, $buffer, 1024)) {
       $bufferfile .= $buffer;
+      #一時ファイルで保存ファイルサイズチェック(1MBまで)
+      print FILE $buffer;
+      warn -s FILE;
+      if(-s FILE > 1_000_000) {
+        close FILE;
+        $template->process(
+          'insert_input.html',
+          {
+            size_err => '<p class="error">※ファイルのサイズが大きすぎます。</p>',
+          },
+          \$output,
+        ) || return $template->error();
+
+        return $output;
+      }
     }
     # 作成ファイル名のmd5ダイジェストを生成
     my $regex_suffix = qr/\.[^\.]+$/;
@@ -599,9 +589,27 @@ sub do_update {
     my $deldir = './' . substr($delfilename, 0, 2);
 
     unlink $deldir . '/' . $delfilename;
+    # 一時ファイル作成
+    my $fh = File::Temp->new();
+    open FILE, '>', $fh;
     # 作成ファイルをバイナリデータに変換
     while(read($filename, $buffer, 1024)) {
       $bufferfile .= $buffer;
+      #一時ファイルで保存ファイルサイズチェック(1MBまで)
+      print FILE $buffer;
+      warn -s FILE;
+      if(-s FILE > 1_000_000) {
+        close FILE;
+        $template->process(
+          'insert_input.html',
+          {
+            size_err => '<p class="error">※ファイルのサイズが大きすぎます。</p>',
+          },
+          \$output,
+        ) || return $template->error();
+
+        return $output;
+      }
     }
     # 作成ファイル名のmd5ダイジェストを生成
     my $regex_suffix = qr/\.[^\.]+$/;
@@ -644,6 +652,7 @@ sub do_delete {
   my $self = shift;
   my $dbh = $self->param('dbh');
   my $filename = $self->query->param('filename');
+
   eval {
     my $delId = $self->query->param('itemId');
     $dbh->do("DELETE FROM list WHERE id = '$delId'");
@@ -662,6 +671,79 @@ sub do_delete {
   # 削除処理
   unlink $deldir . '/' . $delfilename . (fileparse $filename, $regex_suffix)[2];
   return $self->forward('view');
+}
+
+# ファイル内容の表示
+sub do_openfile {
+  my $self = shift;
+  my $filename = $self->query->param('filename');
+
+  # 読み込みファイル名のmd5ダイジェストを生成
+  my $regex_suffix = qr/\.[^\.]+$/;
+  my $filefrontname = (fileparse $filename, $regex_suffix)[0];
+  my $mdfilename = md5_hex($filefrontname);
+  my $targetdir = './' . substr($mdfilename, 0, 2);
+
+  # 読み込みファイル名(ディレクトリ + md5ダイジェスト + 拡張子)
+  my $openfilename = $targetdir . '/' . $mdfilename . (fileparse $filename, $regex_suffix)[2];
+
+  # ファイルの表示処理
+  return $self->redirect($openfilename, '302');
+}
+
+# ファイルの削除
+sub do_deletefile {
+  my $self = shift;
+  my $dbh = $self->param('dbh');
+  my $filename = $self->query->param('filename');
+
+  eval {
+    my $itemId = $self->query->param('itemId');
+    $dbh->do("UPDATE list SET filename = '' where id = $itemId");
+    $dbh->commit;
+  };
+  if($@) {
+    $dbh->rollback();
+  }
+
+  # 削除ファイル名のmd5ダイジェストを生成
+  my $regex_suffix = qr/\.[^\.]+$/;
+  my $filefrontname = (fileparse $filename, $regex_suffix)[0];
+  my $delfilename = md5_hex($filefrontname);
+  my $deldir = './' . substr($delfilename, 0, 2);
+
+  # 削除処理
+  unlink $deldir . '/' . $delfilename . (fileparse $filename, $regex_suffix)[2];
+
+  # ファイルの表示処理
+  return $self->redirect('./memberview.cgi?rm=view', '302');
+}
+
+# 操作履歴データの表示
+sub do_viewlog {
+  # my $self = shift;
+  # my $template = $self->param('template');
+  # my $output;
+  #
+  # open(OUT, "< acclogf.cgi") or die("Error:$!");
+  #
+  # my @accData;  # これをテンプレートに渡す
+  # my $line;
+  # while ($line = <OUT>) {
+  #   push(@accData, $line);
+  # }
+  #
+  # $template->process(
+  #   'acccess_log.html',
+  #   {
+  #     accData => @accData,
+  #   },
+  #   \$output,
+  # ) || return $template->error();
+  #
+  # close OUT;
+  #
+  # return $output;
 }
 
 1;  # Perlの全てのモジュールの末尾にはこれが必要

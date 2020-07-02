@@ -15,9 +15,9 @@
     <h1>名簿</h1>
     <form action="memberview.cgi" class="form-search" method="get" enctype="application/x-www-form-urlencoded">
       <label class="search_wrap">
-        <input type="search" class="search" name="search" size="30" maxlength="255">
+        <input type="search" class="search" name="search" value="[% search_word %]" size="30" maxlength="255">
       </label>
-      <input type="hidden" name="id" value="[% page.current_page %]">
+      <input type="hidden" name="id" value="[% current_page %]">
       <input type="hidden" name="rm" value="search">
       <button type="submit" class="btn btn-primary btn-search">検索</button>
       <p class="search_annotation">※ID検索時は半角英数字で入力</p>
@@ -75,9 +75,47 @@
       [% END -%]
     </table>
     <div class="page_trans">
-      <a href="memberview.cgi?rm=view&id=[% page.previous_page %]">[% page.previous_page %]</a>
-      <span>[% page.current_page %]</span>
-      <a href="memberview.cgi?rm=view&id=[% page.next_page %]">[% page.next_page %]</a>
+      [% IF search_word %]
+      [% IF current_page > 3 %]
+      <a href="memberview.cgi?rm=search&id=1&search=[% search_word %]">1</a>...
+      [% END %]
+      [% IF current_page > 2 %]
+      <a href="memberview.cgi?rm=search&id=[% current_page - 2 %]&search=[% search_word %]">[% current_page - 2 %]</a>
+      [% END %]
+      [% IF current_page > 1 %]
+      <a href="memberview.cgi?rm=search&id=[% current_page - 1 %]&search=[% search_word %]">[% current_page - 1 %]</a>
+      [% END %]
+      <span>[% current_page %]</span>
+      [% IF current_page + 1 <= page_length %]
+      <a href="memberview.cgi?rm=search&id=[% current_page + 1 %]&search=[% search_word %]">[% current_page + 1 %]</a>
+      [% END %]
+      [% IF current_page + 2 <= page_length %]
+      <a href="memberview.cgi?rm=search&id=[% current_page + 2 %]&search=[% search_word %]">[% current_page + 2 %]</a>
+      [% END %]
+      [% IF current_page + 3 <= page_length %]
+      ...<a href="memberview.cgi?rm=search&id=[% page_length %]&search=[% search_word %]">[% page_length %]</a>
+      [% END %]
+      [% ELSE %]
+      [% IF current_page > 3 %]
+      <a href="memberview.cgi?rm=search&id=1">1</a>...
+      [% END %]
+      [% IF current_page > 2 %]
+      <a href="memberview.cgi?rm=view&id=[% current_page - 2 %]">[% current_page - 2 %]</a>
+      [% END %]
+      [% IF current_page > 1 %]
+      <a href="memberview.cgi?rm=view&id=[% current_page - 1 %]">[% current_page - 1 %]</a>
+      [% END %]
+      <span>[% current_page %]</span>
+      [% IF current_page + 1 <= page_length %]
+      <a href="memberview.cgi?rm=view&id=[% current_page + 1 %]">[% current_page + 1 %]</a>
+      [% END %]
+      [% IF current_page + 2 <= page_length %]
+      <a href="memberview.cgi?rm=view&id=[% current_page + 2 %]">[% current_page + 2 %]</a>
+      [% END %]
+      [% IF current_page + 3 <= page_length %]
+      ...<a href="memberview.cgi?rm=view&id=[% page_length %]">[% page_length %]</a>
+      [% END %]
+      [% END %]
     </div>
     [% IF toplink %]
       <p class="back-top">
@@ -92,6 +130,7 @@
       <input type="hidden" name="rm" value="logout">
       <button type="submit" class="btn btn-light gray-back">ログアウト</button>
     </form>
+    <a href="memberview.cgi?rm=loglist">操作履歴</a>
   </div>
 </body>
 </html>

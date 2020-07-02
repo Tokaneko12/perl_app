@@ -18,7 +18,7 @@
     新規登録
     [% END %]
   </h1>
-  <form action="memberview.cgi" method="post" enctype="multipart/form-data">
+  <form name="f1" action="memberview.cgi" method="post" enctype="multipart/form-data" onsubmit="return false;">
     <div class="form-group">
       [% IF item %]
       <input type="hidden" name="id" value="[% item.id %]" required>
@@ -34,6 +34,9 @@
       [% END %]
       <input type="hidden" name="rm" value="update_complete">
       <input type="file" class="file_select" name="upload_file" size="60">
+      [% IF size_err %]
+        [% size_err %]
+      [% END %]
       <input type="hidden" name="current_filename" value="[% item.filename %]" size="60">
       [% ELSE %]
       <p class="name_txt">名前<span>*</span>:</p>
@@ -48,12 +51,15 @@
       [% END %]
       <input type="hidden" name="rm" value="input_complete">
       <input type="file" class="file_select" name="upload_file" size="60">
+      [% IF size_err %]
+        [% size_err %]
+      [% END %]
       [% END %]
       <div class="form-btns">
         [% IF item %]
-        <input type="submit" class="btn btn-primary" value="更新">
+        <input type="button" onclick="window.document.forms.f1.submit();" class="btn btn-primary" value="更新">
         [% ELSE %]
-        <input type="submit" class="btn btn-primary" value="登録">
+        <input type="submit" onclick="window.document.forms.f1.submit();" class="btn btn-primary" value="登録">
         [% END %]
         <input type="reset" class="btn btn-secondary" value="リセット">
       </div>
