@@ -62,7 +62,7 @@ sub setup {
     'redirect_login' => 'redirect_login', #セッション切れ時のリダイレクト処理
     'open_file' => 'do_openfile', #ファイル内容の表示
     'delete_file' => 'do_deletefile', #ファイルの削除
-    'loglist' => 'do_viewlog', #ファイルの削除
+    'loglist' => 'do_viewlog', #アクセスログの表示
   );
 }
 
@@ -82,15 +82,6 @@ sub cgiapp_prerun {
   my $current_runmode = $self->get_current_runmode();
   my $isInvalidSession = 0;
 
-  my ($sec, $min, $hour, $mday, $mon, $year) = localtime();
-  my $fmt0 = "%04d/%02d/%02d %02d:%02d:%02d";
-  my $day0 = sprintf($fmt0, $year+1900,$mon+1,$mday,$hour+9,$min,$sec);
-
-  my $filnam = "acclogf.cgi";
-  open(FP,">>$filnam");
-  print FP "$day0,$current_runmode\n";
-  close(FP);
-
   if($current_runmode !~/^(login_input|login|logout|regist_input|regist|error)$/) {
     if(!$sid) {
       #エラー処理
@@ -108,6 +99,20 @@ sub cgiapp_prerun {
     if($isInvalidSession) {
       return $self->prerun_mode('redirect_login');
     }
+  }
+
+  if($current_runmode !~/^(login|logout|regist|input_complete|update_complete|delete_item)$/) {
+    my ($sec, $min, $hour, $mday, $mon, $year) = localtime();
+    my $requri = $ENV{'REQUEST_URI'}; #リクエストしたURI
+    my $ipadr = $ENV{'REMOTE_ADDR'}; #ipアドレス
+    my $agent = $ENV{'HTTP_USER_AGENT'}; # ユーザーエージェント
+    my $fmt0 = "%04d/%02d/%02d %02d:%02d:%02d";
+    my $day0 = sprintf($fmt0, $year+1900,$mon+1,$mday,$hour+9,$min,$sec); #時刻
+
+    my $filnam = "acclogf.cgi";
+    open(FP,">>$filnam");
+    print FP "$day0,$ipadr,$agent,$requri,$current_runmode\n";
+    close(FP);
   }
 
   $dbh = DBI->connect('DBI:mysql:ATMARKIT:localhost', 'test', 'test2001');
@@ -470,10 +475,16 @@ sub do_create {
         return $output;
       }
     }
+
+    # 次のauto_increment値の取得
+    my $sth_nid = $dbh->prepare("SELECT auto_increment FROM information_schema.tables WHERE table_name = 'list'");
+    $sth_nid->execute() || die ($DBI::errstr);
+    my $next_id = $sth_nid->fetchrow_array;
+
     # 作成ファイル名のmd5ダイジェストを生成
     my $regex_suffix = qr/\.[^\.]+$/;
     my $filefrontname = (fileparse $filename, $regex_suffix)[0];
-    my $mdfilename = md5_hex($filefrontname);
+    my $mdfilename = md5_hex($next_id . $filefrontname);
     my $targetdir = './' . substr($mdfilename, 0, 2);
     # 保存先ディレクトリがなければ新規作成
     if (!-d $targetdir) {
@@ -614,7 +625,7 @@ sub do_update {
     # 作成ファイル名のmd5ダイジェストを生成
     my $regex_suffix = qr/\.[^\.]+$/;
     my $filefrontname = (fileparse $filename, $regex_suffix)[0];
-    my $mdfilename = md5_hex($filefrontname);
+    my $mdfilename = md5_hex($updId . $filefrontname);
     my $targetdir = './' . substr($mdfilename, 0, 2);
     # 保存先ディレクトリがなければ新規作成
     if (!-d $targetdir) {
@@ -721,29 +732,29 @@ sub do_deletefile {
 
 # 操作履歴データの表示
 sub do_viewlog {
-  # my $self = shift;
-  # my $template = $self->param('template');
-  # my $output;
-  #
-  # open(OUT, "< acclogf.cgi") or die("Error:$!");
-  #
-  # my @accData;  # これをテンプレートに渡す
-  # my $line;
-  # while ($line = <OUT>) {
-  #   push(@accData, $line);
-  # }
-  #
-  # $template->process(
-  #   'acccess_log.html',
-  #   {
-  #     accData => @accData,
-  #   },
-  #   \$output,
-  # ) || return $template->error();
-  #
-  # close OUT;
-  #
-  # return $output;
+  my $self = shift;
+  my $template = $self->param('template');
+  my $output;
+
+  open(OUT, "< acclogf.cgi") or die("Error:$!");
+
+  my @accData;  # これをテンプレートに渡す
+  my $line;
+  while ($line = <OUT>) {
+    push(@accData, $line);
+  }
+
+  $template->process(
+    'acccess_log.html',
+    {
+      accData => \@accData,
+    },
+    \$output,
+  ) || return $template->error();
+
+  close OUT;
+
+  return $output;
 }
 
 1;  # Perlの全てのモジュールの末尾にはこれが必要
