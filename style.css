@@ -126,6 +126,14 @@ form textarea:focus:invalid + .error .invalid {
   margin-top: 15px;
 }
 
+.file_select.hidden {
+  visibility: hidden;
+}
+
+.filename_wrap {
+  margin-top: 10px;
+}
+
 /*========================================
 
  その他設定

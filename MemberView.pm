@@ -82,6 +82,20 @@ sub cgiapp_prerun {
   my $current_runmode = $self->get_current_runmode();
   my $isInvalidSession = 0;
 
+  if($current_runmode =~/^(login|logout|regist|input_complete|update_complete|delete_item)$/) {
+    my ($sec, $min, $hour, $mday, $mon, $year) = localtime();
+    my $requri = $ENV{'REQUEST_URI'}; #リクエストしたURI
+    my $ipadr = $ENV{'REMOTE_ADDR'}; #ipアドレス
+    my $agent = $ENV{'HTTP_USER_AGENT'}; # ユーザーエージェント
+    my $fmt0 = "%04d/%02d/%02d %02d:%02d:%02d";
+    my $day0 = sprintf($fmt0, $year+1900,$mon+1,$mday,$hour+9,$min,$sec); #時刻
+
+    my $filnam = "acclogf.cgi";
+    open(FP,">>$filnam");
+    print FP "$day0,$ipadr,$agent,$requri,$current_runmode\n";
+    close(FP);
+  }
+
   if($current_runmode !~/^(login_input|login|logout|regist_input|regist|error)$/) {
     if(!$sid) {
       #エラー処理
@@ -99,20 +113,6 @@ sub cgiapp_prerun {
     if($isInvalidSession) {
       return $self->prerun_mode('redirect_login');
     }
-  }
-
-  if($current_runmode !~/^(login|logout|regist|input_complete|update_complete|delete_item)$/) {
-    my ($sec, $min, $hour, $mday, $mon, $year) = localtime();
-    my $requri = $ENV{'REQUEST_URI'}; #リクエストしたURI
-    my $ipadr = $ENV{'REMOTE_ADDR'}; #ipアドレス
-    my $agent = $ENV{'HTTP_USER_AGENT'}; # ユーザーエージェント
-    my $fmt0 = "%04d/%02d/%02d %02d:%02d:%02d";
-    my $day0 = sprintf($fmt0, $year+1900,$mon+1,$mday,$hour+9,$min,$sec); #時刻
-
-    my $filnam = "acclogf.cgi";
-    open(FP,">>$filnam");
-    print FP "$day0,$ipadr,$agent,$requri,$current_runmode\n";
-    close(FP);
   }
 
   $dbh = DBI->connect('DBI:mysql:ATMARKIT:localhost', 'test', 'test2001');
@@ -706,28 +706,22 @@ sub do_openfile {
 sub do_deletefile {
   my $self = shift;
   my $dbh = $self->param('dbh');
-  my $filename = $self->query->param('filename');
+  my $template = $self->param('template');
+  my $output;
 
-  eval {
-    my $itemId = $self->query->param('itemId');
-    $dbh->do("UPDATE list SET filename = '' where id = $itemId");
-    $dbh->commit;
-  };
-  if($@) {
-    $dbh->rollback();
-  }
+  my $id = $self->query->param('id');
+  my $sth = $dbh->prepare("SELECT * FROM list where id = ?");
+  $sth->execute($id) || die($DBI::errstr);
+  my $r = $sth->fetchrow_hashref();
+  $r->{filename} = '';
 
-  # 削除ファイル名のmd5ダイジェストを生成
-  my $regex_suffix = qr/\.[^\.]+$/;
-  my $filefrontname = (fileparse $filename, $regex_suffix)[0];
-  my $delfilename = md5_hex($filefrontname);
-  my $deldir = './' . substr($delfilename, 0, 2);
+  $template->process(
+    'insert_input.html',
+    { item => $r },
+    \$output,
+  ) || return $template->error();
 
-  # 削除処理
-  unlink $deldir . '/' . $delfilename . (fileparse $filename, $regex_suffix)[2];
-
-  # ファイルの表示処理
-  return $self->redirect('./memberview.cgi?rm=view', '302');
+  return $output;
 }
 
 # 操作履歴データの表示
@@ -741,7 +735,8 @@ sub do_viewlog {
   my @accData;  # これをテンプレートに渡す
   my $line;
   while ($line = <OUT>) {
-    push(@accData, $line);
+    my @strlist = split(/,/, $line);
+    push(@accData, @strlist);
   }
 
   $template->process(

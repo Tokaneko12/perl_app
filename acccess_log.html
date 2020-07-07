@@ -11,7 +11,8 @@
   <link rel="stylesheet" href="style.css" type="text/css">
 </head>
 <body>
-  [% FOREACH acccess = accData -%]
+  <h1>操作履歴</h1>
+  [% FOREACH acccess in accData -%]
     <p>[% acccess %]</p>
   [% END -%]
 </body>

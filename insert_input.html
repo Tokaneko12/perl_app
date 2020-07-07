@@ -33,7 +33,14 @@
         [% results.msgs.err_memo %]
       [% END %]
       <input type="hidden" name="rm" value="update_complete">
+      [% IF item.filename %]
+      <div class="filename_wrap">
+        [% item.filename %]
+        <input type="button" name="file_delete" onclick="window.document.forms.f2.submit();" value="削除">
+      </div>
+      [% ELSE %]
       <input type="file" class="file_select" name="upload_file" size="60">
+      [% END %]
       [% IF size_err %]
         [% size_err %]
       [% END %]
@@ -64,6 +71,10 @@
         <input type="reset" class="btn btn-secondary" value="リセット">
       </div>
     </div>
+  </form>
+  <form name="f2" action="memberview.cgi" method="post" enctype="multipart/form-data" onsubmit="return false;">
+    <input type="hidden" name="id" value="[% item.id %]" required>
+    <input type="hidden" name="rm" value="delete_file">
   </form>
   <p>
     <a href="memberview.cgi?rm=view">戻る</a>

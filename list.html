@@ -17,7 +17,7 @@
       <label class="search_wrap">
         <input type="search" class="search" name="search" value="[% search_word %]" size="30" maxlength="255">
       </label>
-      <input type="hidden" name="id" value="[% current_page %]">
+      <input type="hidden" name="id" value="1">
       <input type="hidden" name="rm" value="search">
       <button type="submit" class="btn btn-primary btn-search">検索</button>
       <p class="search_annotation">※ID検索時は半角英数字で入力</p>
@@ -40,12 +40,6 @@
             <input type="hidden" name="rm" value="open_file">
             <input type="hidden" name="filename" value="[% p.filename %]">
             <button type="submit" class="btn file_btn">[% p.filename %]</button>
-          </form>
-          <form class="no-margin form--fdelete" action="memberview.cgi" method="post" onSubmit="return confirm('「ID[% p.id %] [% p.filename %]」のファイルを削除してもよろしいですか？') " enctype="application/x-www-form-urlencoded">
-            <input type="hidden" name="rm" value="delete_file">
-            <input type="hidden" name="itemId" value="[% p.id %]">
-            <input type="hidden" name="filename" value="[% p.filename %]">
-            <button type="submit" class="btn file_btn--delete">×</button>
           </form>
           [% END %]
         </td>
@@ -97,7 +91,7 @@
       [% END %]
       [% ELSE %]
       [% IF current_page > 3 %]
-      <a href="memberview.cgi?rm=search&id=1">1</a>...
+      <a href="memberview.cgi?rm=view&id=1">1</a>...
       [% END %]
       [% IF current_page > 2 %]
       <a href="memberview.cgi?rm=view&id=[% current_page - 2 %]">[% current_page - 2 %]</a>
